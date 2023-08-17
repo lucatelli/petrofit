@@ -44,7 +44,7 @@ def plot_petrosian(r_list, area_list, flux_list, epsilon=2., eta=0.2, plot_r=Fal
         If set to True, `r_half_light` and `r_total_flux` will be plotted.
     """
     petrosian_list = calculate_petrosian(area_list, flux_list)
-
+    fig = plt.figure(figsize=(5, 4))
     r_list_new, petrosian_list_new = get_interpolated_values(r_list[1:], petrosian_list[1:])
 
     plt.plot(r_list, petrosian_list, marker='o', linestyle='None', label='Data')

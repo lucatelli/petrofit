@@ -256,7 +256,7 @@ def photometry_step(position, r_list, image, error=None, mask=None, elong=1., th
 
     if plot:
         ax = plt.gca()
-        plt.imshow(image, vmin=vmin, vmax=image.mean() * 10 if vmax is None else vmax)
+        plt.imshow(image, vmin=vmin, vmax=image.max() * 0.3 if vmax is None else vmax)
         ax.set_title("Image and Aperture Radii")
         ax.set_xlabel("Pixels")
         ax.set_ylabel("Pixels")
@@ -277,7 +277,7 @@ def photometry_step(position, r_list, image, error=None, mask=None, elong=1., th
             raise Exception("Nan photometric_value")
 
         if plot:
-            aperture.plot(plt.gca(), color='w', alpha=0.5)
+            aperture.plot(plt.gca(), color='w', alpha=0.2)
 
 
         flux_arr.append(photometric_value)
@@ -287,8 +287,10 @@ def photometry_step(position, r_list, image, error=None, mask=None, elong=1., th
     return np.array(flux_arr), np.array(area_arr), np.array(error_arr)
 
 
-def source_photometry(source, image, segm_deblend, r_list, error=None, cutout_size=None,
-                      bg_sub=False, sigma=3.0, sigma_type='clip', method='exact', mask_background=False,
+def source_photometry(source, image, segm_deblend, r_list, error=None,
+                      cutout_size=None,position2=None,
+                      bkg_sub=False, sigma=3.0, sigma_type='clip',
+                      method='exact', mask_background=False,
                       plot=False, vmin=0, vmax=None, ):
     """
     Aperture photometry on a PhotUtils `SourceProperties`.
@@ -313,7 +315,7 @@ def source_photometry(source, image, segm_deblend, r_list, error=None, cutout_si
     cutout_size : int
         Size of cutout.
 
-    bg_sub : bool
+    bkg_sub : bool
         If the code should subtract the background using the `sigma` provided.
 
     sigma : float
@@ -419,7 +421,7 @@ def source_photometry(source, image, segm_deblend, r_list, error=None, cutout_si
 
     # Subtract Mean Plane
     # -------------------
-    if bg_sub:
+    if bkg_sub:
         if len(np.where(~np.isnan(masked_stats_image))[0]) > 10:
             with warnings.catch_warnings():
 
@@ -445,7 +447,7 @@ def source_photometry(source, image, segm_deblend, r_list, error=None, cutout_si
                     masked_image = np.clip(masked_image, - sigma, np.inf)
 
         elif plot:
-            print("bg_sub: Not enough datapoints, did not subtract.")
+            print("bkg_sub: Not enough datapoints, did not subtract.")
 
     # Make mask
     # ---------
@@ -453,48 +455,57 @@ def source_photometry(source, image, segm_deblend, r_list, error=None, cutout_si
     mask[np.where(np.isnan(masked_image))] = 0
     mask = mask.astype(bool)
 
-    position = np.array(masked_image.data.shape) / 2.
+    if position2 is None:
+        position2 = np.array(masked_image.data.shape) / 2.
+    else:
+        position2 = position2
 
     if plot:
         print(source.label)
-        fig, ax = plt.subplots(1, 2, figsize=[24, 12])
+        fig, ax = plt.subplots(1, 2, figsize=[12, 4])
 
     if plot:
         plt.sca(ax[0])
 
-    flux_arr, area_arr, error_arr = photometry_step(position, r_list, masked_image, error=masked_err, mask=mask,
-                                                          elong=elong, theta=theta, plot=plot, vmin=vmin, vmax=vmax,
-                                                          method=method)
+    flux_arr, area_arr, error_arr = photometry_step(position=position2,
+                                                    r_list=r_list,
+                                                    image=masked_image,
+                                                    error=masked_err,
+                                                    mask=mask,
+                                                    elong=elong, theta=theta,
+                                                    plot=plot,
+                                                    vmin=vmin, vmax=vmax,
+                                                    method=method)
 
     if plot:
         plt.sca(ax[1])
-        plt.plot(r_list, flux_arr, c='black', linewidth=3)
-        for r in r_list:
-            plt.axvline(r, alpha=0.5, c='r')
+        plt.plot(r_list, flux_arr/np.max(flux_arr), c='black', linewidth=3)
+        # for r in r_list:
+        #     plt.axvline(r, alpha=0.5, c='r')
         plt.title("Curve of Growth")
         plt.xlabel("Radius in Pixels")
-        plt.ylabel("Flux Enclosed")
+        plt.ylabel("Fractional Flux Enclosed")
         plt.show()
 
         r = max(r_list)
-        fig, ax = plt.subplots(1, 1, figsize=[24, 6])
-        plt.plot(masked_image[:, int(position[0])], c='black', linewidth=3)
+        fig, ax = plt.subplots(1, 1, figsize=[10, 3])
+        plt.plot(masked_image[:, int(position2[0])], c='black', linewidth=3)
         plt.axhline(0, c='black')
         # plt.axhline(noise_sigma, c='b')
-        plt.axvline(position[0], linestyle='--')
-        plt.axvline(position[0] + r, alpha=0.5, c='r')
-        plt.axvline(position[0] - r, alpha=0.5, c='r')
+        plt.axvline(position2[0], linestyle='--')
+        plt.axvline(position2[0] + r, alpha=0.5, c='r')
+        plt.axvline(position2[0] - r, alpha=0.5, c='r')
         plt.xlabel("Slice Along Y [pix]")
         plt.ylabel("Flux")
 
-        fig, ax = plt.subplots(1, 1, figsize=[24, 6])
+        fig, ax = plt.subplots(1, 1, figsize=[10, 3])
 
-        plt.plot(masked_image[int(position[1]), :], c='black', linewidth=3)
+        plt.plot(masked_image[int(position2[1]), :], c='black', linewidth=3)
         plt.axhline(0, c='black')
         # plt.axhline(noise_sigma, c='b')
-        plt.axvline(position[0], linestyle='--')
-        plt.axvline(position[0] + r, alpha=0.5, c='r')
-        plt.axvline(position[0] - r, alpha=0.5, c='r')
+        plt.axvline(position2[0], linestyle='--')
+        plt.axvline(position2[0] + r, alpha=0.5, c='r')
+        plt.axvline(position2[0] - r, alpha=0.5, c='r')
         plt.xlabel("Slice Along X [pix]")
         plt.ylabel("Flux")
 

@@ -8,7 +8,7 @@ from astropy.nddata import CCDData, Cutout2D
 
 from photutils import detect_threshold
 from photutils import deblend_sources
-from photutils import detect_sources
+from photutils.segmentation import detect_sources
 from photutils.segmentation import SourceCatalog
 from photutils.isophote import EllipseGeometry, Ellipse
 
@@ -270,7 +270,8 @@ def make_segments(image, npixels=None, threshold=3., fwhm=8., kernel_size=4):
 
     kernel = make_kernel(fwhm, kernel_size) if kernel_size else None
 
-    return detect_sources(image, threshold, npixels=npixels, kernel=kernel)
+    # return detect_sources(image, threshold, npixels=npixels, kernel=kernel)
+    return detect_sources(image, threshold, npixels=npixels)
 
 
 def deblend_segments(image, segm, npixels=None, fwhm=8., kernel_size=4, nlevels=30, contrast=1/1000):
